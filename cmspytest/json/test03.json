@@ -1,0 +1,19 @@
+{
+  "userId": "test01",
+  "clientId": "fgm",
+  "sourceId": "test01",
+  "clientName": "test01",
+  "sourceType": "test01",
+  "byPassScreening": false,
+   "videoRequest": {
+    "videoNeedCompressed": true
+  },
+  "imageRequest": {
+    "quality": 1,
+    "width": 100,
+    "height": 100,
+    "mode": "AUTOMATIC",
+    "forceCompressQuality": true,
+    "webpFormatConversion": true
+  }
+}
