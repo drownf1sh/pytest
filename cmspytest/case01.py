@@ -11,6 +11,12 @@ class Test01:
         print(num)
         assert 4 == 4
 
+    def test_three(self,num):
+        if 'ui' in num:
+            pytest.skip()
+        print(num)
+        assert 4 == 4
+
 if __name__ == "__main__":
     # 若存在多个标记，则用or连接，形成一个测试集，比如'-m=assetList or test or allLists'
     pytest.main(['-v', 'case01.py', "--html=./log/123.html"])
