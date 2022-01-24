@@ -3,12 +3,11 @@ import datetime
 import os
 import json
 import time
-# from fake_useragent import UserAgent
+from fake_useragent import UserAgent
 from configobj import ConfigObj
 
 curpath = os.path.abspath('.')
 conf_ini = curpath + "\\conf\\config.ini"
-# conf_ini = r"C:\Users\Willy Wang\PycharmProjects\cmspytest\conf\config.ini"
 configini = ConfigObj(conf_ini, encoding='UTF8')
 env = configini['env']['env']
 
@@ -24,11 +23,11 @@ def inappropriate_keyword(str1,str2):
             break
     return type
 
-# def base64_encode(filefath):
-#     """filefath：robotframework：C:/Users/suxiong/Desktop/test002.txt python:r'C:\path' """
-#     with open(filefath, "rb") as f:
-#         bs64_str = base64.b64encode(f.read()).decode('utf8')
-#     return bs64_str
+def base64_encode(filefath):
+    """filefath：robotframework：C:/Users/suxiong/Desktop/test002.txt python:r'C:\path' """
+    with open(filefath, "rb") as f:
+        bs64_str = base64.b64encode(f.read()).decode('utf8')
+    return bs64_str
 
 def Throw_exception():
     """Throw_exception"""
@@ -180,11 +179,11 @@ def loadjson(filename):
         data = json.load(f)
     return data
 
-# def browser_useragent():
-#     "Create useragent for browser,No parameters are required"
-#     ua = UserAgent()
-#     headers = {'User-Agent': ua.random}
-#     return headers
+def browser_useragent():
+    "Create useragent for browser,No parameters are required"
+    ua = UserAgent()
+    headers = {'User-Agent': ua.random}
+    return headers
 
 def dictsmerge(*args):
     """Merge multiple dictionaries"""

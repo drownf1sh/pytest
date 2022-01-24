@@ -2,27 +2,11 @@ import logging
 import requests
 import time
 import os
+import json
 from pymongo import MongoClient
 from configobj import ConfigObj
 
-curpath = os.path.abspath('.')
-conf_ini = curpath + "\\conf\\config.ini"
-# conf_ini = r"C:\Users\Willy Wang\PycharmProjects\cmspytest\conf\config.ini"
-configini = ConfigObj(conf_ini, encoding='UTF8')
-env = configini['env']['env']
-db_cms = "db_cms_" + env
-user = configini[db_cms]['user']
-pwd = configini[db_cms]['pwd']
-id = configini[db_cms]['id']
-port = configini[db_cms]['port']
-db_name = configini[db_cms]['db_name']
-
 class MyRequest:
-
-    # def __init__(self):
-    #     self.env = configini['env']['env']
-    #     self.db_cms = "db_cms"+self.env
-
 
     def sendRequest(self, url, method, params=None, data=None,
                     headers=None, json=None, cookies=None, timeout=10):
@@ -37,6 +21,7 @@ class MyRequest:
         :param  timeout:   设定超时时间，秒为单位
         :return: requests.Response.json()
         '''
+
         responseResult = None
         new_method = method.lower()
         if new_method == 'get':
@@ -53,17 +38,21 @@ class MyRequest:
                 print('json = None')
                 logging.info("正在发送请求，请求地址：{}， 请求参数{}".format(url, data))
                 responseResult = requests.post(url=url, data=data, headers=headers, cookies=cookies, timeout=timeout)
-        # print(MyRequest.config)
         return responseResult.json()
 
+    @classmethod
     def mongodbConnect(self):
         """cms_mongodb_connect"""
         time.sleep(1)
-        uri = "mongodb://" + user + ":" + pwd + "@" + id + ":" + port + "/?authSource=admin&serverSelectionTimeoutMS=1200"
+        db_cms = "db_cms_" + self.dataini()
+        uri = "mongodb://" + self.dataini(db_cms,'user') + ":" + self.dataini(db_cms,'pwd') \
+              + "@" + self.dataini(db_cms,'id') + ":" + str(self.dataini(db_cms,'port')) \
+              + "/?authSource=admin&serverSelectionTimeoutMS=1200"
         client = MongoClient(uri, connect=False)
-        db = client.get_database(db_name)
+        db = client.get_database(self.dataini(db_cms,'db_name'))
         return db, client
 
+    @classmethod
     def Review_mongodb_find(self,db, col, where):
         """Review_mongodb_find"""
         mycol = db[col]
@@ -72,3 +61,21 @@ class MyRequest:
         for i in x:
             a.append(i)
         return a
+
+    # path = "\\config.ini",path="\\conf\\config.ini"
+    @classmethod
+    def dataini(self,module="env", data="env", path="\\conf\\config.ini"):
+        """
+        module="env",
+        data="env",
+        path = "\\conf\\config.ini
+        """
+        curpath = os.path.abspath('.')
+        data_ini = curpath + path
+        dataini = ConfigObj(data_ini, encoding='UTF8')
+        data = dataini[module][data]
+        try:
+            json_data = json.loads(data)
+            return json_data
+        except:
+            return data

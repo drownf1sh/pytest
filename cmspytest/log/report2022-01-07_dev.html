@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report2022-01-07_dev.html</h1>
+    <p>Report generated on 07-Jan-2022 at 15:50:00 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "1.0.0", "py": "1.11.0", "pytest": "6.2.5"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Windows-10-10.0.19041-SP0</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"forked": "1.4.0", "html": "3.1.1", "metadata": "1.11.0", "ordering": "0.6", "xdist": "2.5.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.7.0</td></tr></table>
+    <h2>Summary</h2>
+    <p>22 tests ran in 95.78 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">22 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video06.mpv]</td>
+          <td class="col-duration">8.73</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw5] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw5] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw5] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw5] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video06.mpv test04.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501723615150080&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: True, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501723615150080&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501723615150080&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:33.919+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:33.919+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501723615150080.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video06.mpv&#x27;, &#x27;warning&#x27;: &#x27;This file skipped the AI scanner.&#x27;, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501723615150080&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501723615150080.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video01.webm]</td>
+          <td class="col-duration">69.70</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw0] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw0] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw0] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video01.webm test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501895414177792&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501895414177792&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501895414177792&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:49:35.268+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:49:35.268+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501895414177792.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video01.webm&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501895414177792&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501895414177792.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video13.asf]</td>
+          <td class="col-duration">17.04</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw12] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw12] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw12] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw12] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video13.asf test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501757975281665&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501757975281665&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501757975281665&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:42.858+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:42.858+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501757975281665.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video13.asf&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501757975281665&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501757975281665.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video18.avchd]</td>
+          <td class="col-duration">11.39</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw17] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw17] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw17] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw17] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video18.avchd test04.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501895414243328&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: True, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501895414243328&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501895414243328&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:37.555+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:37.555+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501895414243328.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video18.avchd&#x27;, &#x27;warning&#x27;: &#x27;This file skipped the AI scanner.&#x27;, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501895414243328&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501895414243328.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video09.m4p]</td>
+          <td class="col-duration">7.87</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw8] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw8] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw8] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw8] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video09.m4p test02.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501757975248896&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: True, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501757975248896&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501757975248896&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:33.940+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:33.940+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501757975248896.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video09.m4p&#x27;, &#x27;warning&#x27;: &#x27;This file skipped the AI scanner.&#x27;, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501757975248896&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501757975248896.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video22.x-matroska]</td>
+          <td class="col-duration">25.23</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw21] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw21] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw21] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw21] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video22.x-matroska test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501861054103553&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501861054103553&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501861054103553&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:51.220+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:51.220+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501861054103553.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video22.x-matroska&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501861054103553&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501861054103553.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video11.avi]</td>
+          <td class="col-duration">32.59</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw10] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw10] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw10] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw10] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video11.avi test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501895413841920&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501895413841920&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501895413841920&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:58.556+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:58.556+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501895413841920.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video11.avi&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501895413841920&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501895413841920.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video08.mp4]</td>
+          <td class="col-duration">20.10</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw7] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw7] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw7] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw7] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video08.mp4 test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501792334643200&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501792334643200&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501792334643200&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:43.980+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:43.980+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501792334643200.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video08.mp4&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501792334643200&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501792334643200.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video14.mov]</td>
+          <td class="col-duration">30.49</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw13] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw13] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw13] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw13] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video14.mov test04.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111502548249231360&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: True, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111502548249231360&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111502548249231360&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:56.643+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:56.643+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111502548249231360.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video14.mov&#x27;, &#x27;warning&#x27;: &#x27;This file skipped the AI scanner.&#x27;, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111502548249231360&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111502548249231360.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video04.mpeg]</td>
+          <td class="col-duration">73.50</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw3] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw3] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw3] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw3] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video04.mpeg test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501861054496768&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501861054496768&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501861054496768&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:49:39.487+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:49:39.487+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501861054496768.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video04.mpeg&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501861054496768&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501861054496768.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video02.mpg]</td>
+          <td class="col-duration">19.20</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw1] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw1] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw1] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video02.mpg test01.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501792335028225&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501792335028225&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501792335028225&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:45.362+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:45.362+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501792335028225.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video02.mpg&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501792335028225&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501792335028225.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video21.3gp]</td>
+          <td class="col-duration">25.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw20] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw20] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw20] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw20] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video21.3gp test01.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501723614724096&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501723614724096&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501723614724096&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:51.074+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:51.074+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501723614724096.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video21.3gp&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501723614724096&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501723614724096.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video03.mp2]</td>
+          <td class="col-duration">10.55</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw2] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw2] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw2] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw2] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video03.mp2 test04.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501861054464000&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: True, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501861054464000&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501861054464000&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:36.624+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:36.624+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501861054464000.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video03.mp2&#x27;, &#x27;warning&#x27;: &#x27;This file skipped the AI scanner.&#x27;, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501861054464000&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501861054464000.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video12.wmv]</td>
+          <td class="col-duration">23.91</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw11] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw11] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw11] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw11] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video12.wmv test01.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501757975281664&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501757975281664&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501757975281664&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:50.074+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:50.074+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501757975281664.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video12.wmv&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501757975281664&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501757975281664.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video16.flv]</td>
+          <td class="col-duration">8.67</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw15] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw15] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw15] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw15] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video16.flv test02.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501792334987264&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: True, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501792334987264&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501792334987264&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:34.808+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:34.808+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501792334987264.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video16.flv&#x27;, &#x27;warning&#x27;: &#x27;This file skipped the AI scanner.&#x27;, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501792334987264&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501792334987264.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video20.ts]</td>
+          <td class="col-duration">11.96</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw19] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw19] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw19] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw19] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video20.ts test04.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501861054103552&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: True, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501861054103552&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501861054103552&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:38.125+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:38.125+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501861054103552.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video20.ts&#x27;, &#x27;warning&#x27;: &#x27;This file skipped the AI scanner.&#x27;, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501861054103552&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501861054103552.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video15.qt]</td>
+          <td class="col-duration">25.37</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw14] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw14] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw14] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw14] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video15.qt test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501861054119936&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501861054119936&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501861054119936&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:51.474+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:51.474+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501861054119936.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video15.qt&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501861054119936&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501861054119936.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video17.swf]</td>
+          <td class="col-duration">38.63</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw16] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw16] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw16] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw16] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video17.swf test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111502101572673536&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111502101572673536&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111502101572673536&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:49:04.714+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:49:04.714+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111502101572673536.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video17.swf&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111502101572673536&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111502101572673536.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video19.m3u8]</td>
+          <td class="col-duration">93.25</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw18] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw18] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw18] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw18] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video19.m3u8 test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501792335028224&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501792335028224&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501792335028224&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:49:59.409+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:49:59.409+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501792335028224.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video19.m3u8&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501792335028224&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501792335028224.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video07.ogg]</td>
+          <td class="col-duration">29.12</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw6] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw6] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw6] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw6] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video07.ogg test01.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501792334626816&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501792334626816&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501792334626816&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:55.149+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:55.149+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501792334626816.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video07.ogg&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501792334626816&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501792334626816.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video10.m4v]</td>
+          <td class="col-duration">21.66</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw9] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw9] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw9] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw9] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video10.m4v test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501826694758400&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501826694758400&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501826694758400&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:48:47.763+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:48:47.763+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501826694758400.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video10.m4v&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501826694758400&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501826694758400.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post[video05.mpe]</td>
+          <td class="col-duration">53.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw4] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/>[gw4] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw4] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe[gw4] win32 -- Python 3.7.0 C:\Users\Willy Wang\PycharmProjects\cmspytest\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>连接mongodb
+<br/> ------------------------------Captured stdout call------------------------------ <br/>video05.mpe test03.json
+{&#x27;code&#x27;: &#x27;200&#x27;, &#x27;message&#x27;: &#x27;Succeeded&#x27;, &#x27;data&#x27;: {&#x27;uploadedContent&#x27;: [{&#x27;contentDataId&#x27;: &#x27;6111501895413735424&#x27;, &#x27;clientName&#x27;: &#x27;test01&#x27;, &#x27;clientId&#x27;: &#x27;fgm&#x27;, &#x27;userId&#x27;: &#x27;test01&#x27;, &#x27;needScreened&#x27;: False, &#x27;contentType&#x27;: &#x27;VIDEO&#x27;, &#x27;sourceType&#x27;: &#x27;test01&#x27;, &#x27;sourceId&#x27;: &#x27;test01&#x27;, &#x27;isActive&#x27;: True, &#x27;contentStorageProviderId&#x27;: &#x27;GCS&#x27;, &#x27;contentExternalStorageId&#x27;: &#x27;6111501895413735424&#x27;, &#x27;contentLocationUrl&#x27;: &#x27;6111501895413735424&#x27;, &#x27;createdTime&#x27;: &#x27;2022-01-07T07:49:18.729+00:00&#x27;, &#x27;updatedTime&#x27;: &#x27;2022-01-07T07:49:18.729+00:00&#x27;, &#x27;reportStatus&#x27;: None, &#x27;fileType&#x27;: &#x27;mp4&#x27;, &#x27;isDeleted&#x27;: False}], &#x27;uploadedFiles&#x27;: [{&#x27;url&#x27;: &#x27;https://static.platform.michaels.com/dev00/6111501895413735424.mp4&#x27;, &#x27;fileName&#x27;: &#x27;video05.mpe&#x27;, &#x27;warning&#x27;: None, &#x27;index&#x27;: 0, &#x27;contentDataId&#x27;: &#x27;6111501895413735424&#x27;}], &#x27;failedUploadedFiles&#x27;: []}}
+msg验证ok
+https://static.platform.michaels.com/dev00/6111501895413735424.mp4
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>断开mongodb
+<br/></div></td></tr></tbody></table></body></html>

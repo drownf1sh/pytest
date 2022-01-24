@@ -23,17 +23,19 @@ class DictImporter(object):
             print("env:", env)
             return env
 
- # 修改环境变量
-env = "tst03"
-upenv = DictImporter()
-upenv.update_configini(env)
-# 设置log输出时间，以命名log文件
-# curtime1 = time.strftime('%Y-%m-%d %H %M %S', time.localtime(time.time()))
-curtime1 = time.strftime('%Y-%m-%d', time.localtime(time.time()))
-logname = "report"+curtime1+".html"
-
 if __name__ == '__main__':
+    # 修改环境变量
+    env = "dev"
+    upenv = DictImporter()
+    renv = upenv.update_configini(env)
+    # 设置log输出时间，以命名log文件
+    # curtime1 = time.strftime('%Y-%m-%d %H %M %S', time.localtime(time.time()))
+    curtime1 = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+    logname = "report"+curtime1+ "_" + env + ".html"
+
     # pytest.main(["-v","./testcase", "--html=./log/"+logname])
-    # pytest.main(["-v", "./testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post", "--html=./log/" + logname])
-    pytest.main(["-v","./testcase/review", "--html=./log/"+logname])
-    # pytest.main(["-v", "-n 1", "./testcase/review", "--html=./log/" + logname])
+    # pytest.main(["-v", "./testcase/content/test_ContentV2.py::Testcontent::test_deleteFiles_contentIds_del", "--html=./log/" + logname])
+    # pytest.main(["-v","./testcase/content/test_TextV2.py", "--html=./log/"+logname])
+    # pytest.main(["-v", "-n 1", "./testcase/content", "--html=./log/" + logname])
+    pytest.main(["-v", "-n 22","./testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post", "--html=./log/" + logname])
+
