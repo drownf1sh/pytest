@@ -37,5 +37,5 @@ if __name__ == '__main__':
     # pytest.main(["-v", "./testcase/content/test_ContentV2.py::Testcontent::test_deleteFiles_contentIds_del", "--html=./log/" + logname])
     # pytest.main(["-v","./testcase/content/test_TextV2.py", "--html=./log/"+logname])
     # pytest.main(["-v", "-n 1", "./testcase/content", "--html=./log/" + logname])
-    pytest.main(["-v", "-n 22","./testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post", "--html=./log/" + logname])
-
+    # pytest.main(["-v", "-n 22","./testcase/content/test_ContentV2.py::Testcontent::test_uploadFilesToGcs_post", "--html=./log/" + logname])
+    pytest.main(["-v", "-n 1", "./testcase/test_01.py", "--html=./log/" + logname])

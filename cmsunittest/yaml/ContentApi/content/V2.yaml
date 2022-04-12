@@ -1,0 +1,18 @@
+
+args:
+  - get
+  - /content/v2
+kwargs:
+  -
+    caseName: None
+    params:
+        clientId: 
+        sourceId: 
+        userId: 
+        contentType: 
+        isActive: 
+        
+validator:
+  -
+    json:
+      successed: True

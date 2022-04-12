@@ -1,0 +1,14 @@
+
+args:
+  - get
+  - /content/v2/transferWebp2Png
+kwargs:
+  -
+    caseName: None
+    params:
+        imageUrl: 
+        
+validator:
+  -
+    json:
+      successed: True

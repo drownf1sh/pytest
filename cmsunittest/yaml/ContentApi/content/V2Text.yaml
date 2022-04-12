@@ -1,0 +1,13 @@
+
+args:
+  - post
+  - /content/v2/text
+kwargs:
+  -
+    caseName: None
+    data:
+        {}
+validator:
+  -
+    json:
+      successed: True

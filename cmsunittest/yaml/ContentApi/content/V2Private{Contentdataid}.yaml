@@ -1,0 +1,14 @@
+
+args:
+  - get
+  - /content/v2/private/{contentDataId}
+kwargs:
+  -
+    caseName: None
+    params:
+        contentDataId: 
+        
+validator:
+  -
+    json:
+      successed: True

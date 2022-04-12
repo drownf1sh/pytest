@@ -1,0 +1,14 @@
+
+args:
+  - put
+  - /content/v2/moderate
+kwargs:
+  -
+    caseName: None
+    data:
+        textType: 
+        
+validator:
+  -
+    json:
+      successed: True

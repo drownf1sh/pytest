@@ -1,0 +1,14 @@
+
+args:
+  - get
+  - /content/v2/{contentDataId}
+kwargs:
+  -
+    caseName: None
+    params:
+        contentDataId: 
+        
+validator:
+  -
+    json:
+      successed: True

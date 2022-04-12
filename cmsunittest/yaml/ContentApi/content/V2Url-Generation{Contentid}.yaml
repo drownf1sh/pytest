@@ -1,0 +1,14 @@
+
+args:
+  - get
+  - /content/v2/url-generation/{contentId}
+kwargs:
+  -
+    caseName: None
+    params:
+        contentId: 
+        
+validator:
+  -
+    json:
+      successed: True

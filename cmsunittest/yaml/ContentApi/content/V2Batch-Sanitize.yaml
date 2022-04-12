@@ -1,0 +1,14 @@
+
+args:
+  - post
+  - /content/v2/batch-sanitize
+kwargs:
+  -
+    caseName: None
+    data:
+        inappropriateWordReplacement: 
+        
+validator:
+  -
+    json:
+      successed: True

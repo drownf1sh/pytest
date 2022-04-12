@@ -1,0 +1,14 @@
+
+args:
+  - delete
+  - /content/v2/deleteFiles/{contentIds}
+kwargs:
+  -
+    caseName: None
+    data:
+        contentIds: 
+        
+validator:
+  -
+    json:
+      successed: True

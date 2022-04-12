@@ -1,0 +1,14 @@
+
+args:
+  - put
+  - /content/v2/sanitize
+kwargs:
+  -
+    caseName: None
+    data:
+        inappropriateWordReplacement: 
+        
+validator:
+  -
+    json:
+      successed: True
