@@ -109,8 +109,8 @@ class Testcontent(content):
         # monogodb数据验证
         sqldict = {"_id": data, "is_deleted": False}
         getcode = MyRequest.Review_mongodb_find(cmongodb[0], "content", sqldict)
-        assert getcode[0]['content_type']==response['data']['contentType'] and getcode[0]['file_type']==response['data']['fileType']\
-               and getcode[0]['user_id']==response['data']['userId']
+        assert getcode[0]['content_type'] == response['data']['contentType'] and getcode[0]['file_type']==response['data']['fileType']\
+               and getcode[0]['user_id'] == response['data']['userId']
         print("mongodb验证OK")
 
     @pytest.mark.parametrize('data',MyRequest.dataini("contentId_get",MyRequest.dataini(),
