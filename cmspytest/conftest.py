@@ -1,6 +1,7 @@
-import pytest
-from conf.config import MyRequest
+# import pytest
+# from conf.config import MyRequest
 
+<<<<<<< Updated upstream
 """
 autouse设置为True，自动调用fixture功能
 Scope:
@@ -18,5 +19,15 @@ def cmongodb():
     yield db,client
     client.close()
     print("断开mongodb")
+=======
+# @pytest.fixture(scope="session", autouse=True)
+# def cmongodb():
+#     """连接mongodb"""
+#     db, client = MyRequest.mongodbConnect()
+#     print("连接mongodb")
+#     yield db,client
+#     client.close()
+#     print("断开mongodb")
+>>>>>>> Stashed changes
 
 
