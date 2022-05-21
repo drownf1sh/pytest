@@ -29,7 +29,7 @@ class Testcontent:
 
     def teardown_class(self):
         """断开mongodb"""
-        print ("1ngodb_setup_class")
+        print ("1ngodb_treardown_class")
 # #
 #
 #     @pytest.mark.parametrize('data', data_contentv2text_post)

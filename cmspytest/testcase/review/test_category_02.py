@@ -62,7 +62,6 @@ class Testcontent:
         curtime1 = time.strftime('%Y-%m-%d %H %M %S', time.localtime(time.time()))
         print('in test_one()',data,curtime1)
 
-
     @pytest.mark.run(order=2)
     def test_two(self):
         time.sleep(1)

@@ -1,0 +1,14 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=2000']
+      - id: no-commit-to-branch
+        args: [--branch, master, --branch, dev]
+
+  - repo: https://github.com/ambv/black
+    rev: 21.4b0
+    hooks:
+      - id: black
+        language_version: python3.8

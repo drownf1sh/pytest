@@ -2,7 +2,7 @@ from threading import Thread,Lock
 import datetime
 import time
 
-class  function():
+class function():
     @classmethod
     def add(self,a,b):
         return a+b
@@ -15,7 +15,7 @@ class Test(Thread):
     def run(self):
         for i in range(3):
             time.sleep(0.5)
-            print(i)
+            # print(i)
             Test.list_r.append(function.add(i,1))
 
 if __name__=='__main__':
